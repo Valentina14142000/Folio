@@ -1,4 +1,6 @@
-# AI Knowledge Base
+# Folio
+
+> Ask your documents anything. Self-hosted document Q&A with cited answers.
 
 Upload your documents, then ask questions in plain English and get answers with citations pointing at the exact passages they came from.
 

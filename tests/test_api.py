@@ -2,7 +2,7 @@ def test_health_and_ui(client):
     assert client.get("/health").json() == {"status": "ok"}
     assert client.get("/api/health").json()["ai_configured"] is False
     r = client.get("/")
-    assert r.status_code == 200 and "AI Knowledge Base" in r.text
+    assert r.status_code == 200 and "Folio" in r.text
 
 
 def test_upload_search_chat_delete(client):

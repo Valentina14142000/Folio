@@ -9,7 +9,7 @@ from app.api.routes import router
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(
-    title="AI Knowledge Base",
+    title="Folio",
     version="2.0.0",
     description="Upload documents, search them semantically and ask questions with cited answers.",
 )
