@@ -16,7 +16,7 @@ Upload your documents, then ask questions in plain English and get answers with 
 - **Mobile-friendly UI** with light and dark themes. No build step and no front-end dependencies.
 - **Sample documents** you can load with one click to try it out.
 
-## Screenshots
+## Layout
 
 | Library | Search | Mobile |
 |---|---|---|
