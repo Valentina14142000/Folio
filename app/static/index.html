@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Knowledge Base</title>
+<meta name="description" content="Upload documents, search them semantically and ask questions with cited answers.">
+<meta name="theme-color" content="#4338ca">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234338ca'/%3E%3Cpath d='M9 8h10a4 4 0 0 1 4 4v12H13a4 4 0 0 1-4-4z' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linejoin='round'/%3E%3Cpath d='M13 13h6M13 17h6' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f7fb; --surface:#ffffff; --surface-2:#eef0f7; --ink:#161a2b; --muted:#5d6580; --line:#dde1ee;
+  --brand:#4338ca; --brand-ink:#ffffff; --brand-soft:#e6e5fb; --ok:#0f7b4f; --ok-bg:#dff5ea; --warn:#a15c07; --warn-bg:#fcefd4; --err:#b42318;
+  --shadow:0 1px 2px rgba(22,26,43,.06),0 6px 18px rgba(22,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1120; --surface:#171b2f; --surface-2:#1f2440; --ink:#e8eaf6; --muted:#9aa3c4; --line:#2b3153;
+    --brand:#8b8cf8; --brand-ink:#12132b; --brand-soft:#262a55; --ok:#6fe0a8; --ok-bg:#12382a; --warn:#f2c46b; --warn-bg:#3a2c10; --err:#ff8a80;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+button,input,textarea{font:inherit;color:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px}
+header{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem;letter-spacing:-.01em}
+.logo i{width:32px;height:32px;border-radius:9px;background:var(--brand);display:grid;place-items:center}
+.logo svg{width:18px;height:18px;stroke:var(--brand-ink);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pill{margin-left:auto;font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.pill.on{background:var(--ok-bg);color:var(--ok)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--brand);border-color:var(--brand)}
+nav.tabs .only-mobile{display:none}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;padding:20px 0 40px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+h2{margin:0;font-size:1.05rem;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.88rem;margin:2px 0 0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;min-height:38px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:4px 10px;min-height:30px;font-size:.82rem}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+aside.library{padding:16px;position:sticky;top:112px;max-height:calc(100vh - 128px);overflow:auto}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px 12px;text-align:center;cursor:pointer;margin:14px 0 10px;color:var(--muted);transition:.15s}
+.drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.drop b{display:block;color:var(--ink)}
+.drop small{display:block;margin-top:2px}
+details.paste{margin-bottom:12px}
+details.paste summary{cursor:pointer;font-weight:600;font-size:.9rem;color:var(--brand)}
+input[type=text],textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-top:8px}
+textarea{resize:vertical}
+.docs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.doc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.doc-head{display:flex;gap:8px;align-items:flex-start}
+.doc-name{font-weight:600;background:none;border:0;padding:0;text-align:left;cursor:pointer;overflow-wrap:anywhere;flex:1}
+.doc-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.76rem;color:var(--muted)}
+.tag{background:var(--surface-2);border-radius:999px;padding:1px 8px}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.preview{margin-top:8px;font-size:.84rem;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px}
+.preview p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.empty{color:var(--muted);text-align:center;padding:20px 8px;font-size:.9rem}
+.panel{min-width:0}
+.chat{display:flex;flex-direction:column;min-height:560px}
+.chat-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.chat-head .btn{margin-left:auto}
+.messages{padding:18px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:340px}
+.msg{max-width:min(760px,100%);min-width:0}
+.msg.user{align-self:flex-end;background:var(--brand);color:var(--brand-ink);padding:10px 14px;border-radius:14px 14px 4px 14px;overflow-wrap:anywhere}
+.msg.bot{align-self:flex-start;width:100%}
+.bubble{background:var(--surface-2);border-radius:14px 14px 14px 4px;padding:12px 16px;overflow-wrap:anywhere}
+.bubble p{margin:0 0 8px}.bubble p:last-child{margin:0}
+.bubble ul{margin:4px 0 8px;padding-left:20px}
+.bubble code{background:var(--surface);border-radius:4px;padding:1px 5px;font-size:.9em}
+.cite{background:var(--brand-soft);color:var(--brand);border:0;border-radius:6px;font-size:.75rem;font-weight:700;padding:0 5px;cursor:pointer;vertical-align:1px;margin:0 1px}
+.cite:hover{filter:brightness(.95)}
+.src-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;font-size:.8rem;color:var(--muted)}
+.src-chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 10px;cursor:pointer}
+.src-chip[aria-expanded="true"]{border-color:var(--brand);color:var(--brand)}
+.src-body{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:8px;padding:10px 12px;font-size:.86rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.src-body b{display:block;margin-bottom:4px;color:var(--muted);font-weight:600;font-size:.78rem}
+.composer{border-top:1px solid var(--line);padding:12px 14px;display:flex;gap:10px;align-items:flex-end}
+.composer textarea{margin:0;min-height:44px;max-height:140px}
+.suggest{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px dashed var(--line);background:none;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.85rem;color:var(--muted)}
+.chip:hover{border-color:var(--brand);color:var(--brand)}
+.welcome{margin:auto;text-align:center;max-width:460px;color:var(--muted)}
+.welcome h2{color:var(--ink);margin-bottom:6px}
+.searchbox{display:flex;gap:10px;padding:16px;flex-wrap:wrap}
+.searchbox input{flex:1;min-width:200px;margin:0}
+.results{padding:0 16px 16px;display:grid;gap:10px}
+.result{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.result header{all:unset;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;font-size:.84rem}
+.score{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.78rem}
+.score i{display:block;width:60px;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.score i b{display:block;height:100%;background:var(--brand)}
+.result p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}
+mark{background:#ffe58f;color:#2b2100;border-radius:3px;padding:0 1px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);z-index:50;max-width:calc(100% - 32px)}
+.toast.err{background:var(--err);color:#fff}
+.spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:-2px;animation:sp .7s linear infinite;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.typing{display:inline-flex;gap:4px;padding:4px 0}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:b 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+@media (max-width:899px){
+  .layout{grid-template-columns:1fr;padding-top:14px}
+  nav.tabs .only-mobile{display:block}
+  aside.library{display:none;position:static;max-height:none}
+  body[data-tab="library"] aside.library{display:block}
+  body[data-tab="library"] .panel{display:none}
+  .chat{min-height:calc(100vh - 230px)}
+}
+@media (prefers-reduced-motion:reduce){.spinner,.typing i{animation:none}}
+</style>
+</head>
+<body data-tab="ask">
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <div class="logo"><i><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 8h10a4 4 0 0 1 4 4v12H13a4 4 0 0 1-4-4z"/><path d="M13 13h6M13 17h6"/></svg></i>AI Knowledge Base</div>
+      <span class="pill" id="ai-pill">…</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="ask" aria-selected="true">Ask</button>
+      <button role="tab" data-tab="search" aria-selected="false">Search</button>
+      <button role="tab" data-tab="library" class="only-mobile" aria-selected="false">Documents <span id="doc-count"></span></button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <aside class="card library" aria-label="Documents">
+    <h2>Documents</h2>
+    <p class="sub" id="lib-sub">Your knowledge base</p>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload documents">
+      <b>Drop files here or click to upload</b>
+      <small>PDF, DOCX, TXT, MD, CSV, JSON · up to 10 MB</small>
+    </div>
+    <input type="file" id="file" multiple hidden accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.log,.rst">
+    <details class="paste">
+      <summary>Paste text instead</summary>
+      <form id="paste-form">
+        <input type="text" id="paste-title" placeholder="Title (optional)" maxlength="150" aria-label="Title">
+        <textarea id="paste-text" rows="5" placeholder="Paste notes, an article, an FAQ…" aria-label="Text" required></textarea>
+        <p style="margin:8px 0 0"><button class="btn small primary" type="submit">Add to knowledge base</button></p>
+      </form>
+    </details>
+    <ul class="docs" id="docs"></ul>
+  </aside>
+
+  <div class="panel">
+    <section id="view-ask" class="card chat" role="tabpanel">
+      <div class="chat-head">
+        <div><h2>Ask your documents</h2><p class="sub">Answers cite the passages they come from.</p></div>
+        <button class="btn small" id="clear" hidden>New chat</button>
+      </div>
+      <div class="messages" id="messages" aria-live="polite"></div>
+      <form class="composer" id="ask-form">
+        <textarea id="question" rows="1" maxlength="1000" placeholder="Ask about your documents…" aria-label="Question"></textarea>
+        <button class="btn primary" id="ask-btn" type="submit">Ask</button>
+      </form>
+    </section>
+
+    <section id="view-search" class="card" role="tabpanel" hidden>
+      <div class="chat-head"><div><h2>Search</h2><p class="sub" id="search-sub">Find the most relevant passages across all documents.</p></div></div>
+      <form class="searchbox" id="search-form">
+        <input type="text" id="query" maxlength="500" placeholder="Search by meaning or keywords…" aria-label="Search">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div class="results" id="results"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let docs = [];
+let history = [];
+let busy = false;
+
+function el(tag, props, ...kids){
+  const n = document.createElement(tag);
+  for (const [k,v] of Object.entries(props || {})){
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) n.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return n;
+}
+async function api(path, opts = {}){
+  const headers = opts.raw ? {"content-type": "application/octet-stream"} : {"content-type": "application/json"};
+  const res = await fetch(path, {method: opts.method || "GET", headers, body: opts.raw ? opts.raw : (opts.body ? JSON.stringify(opts.body) : undefined)});
+  if (res.status === 204) return null;
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok){
+    let msg = data && data.detail;
+    if (Array.isArray(msg)) msg = msg.map(m => m.msg).join(". ");
+    throw new Error(msg || "Request failed (" + res.status + ")");
+  }
+  return data;
+}
+let toastTimer;
+function toast(msg, err){
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const t = el("div", {class: "toast" + (err ? " err" : ""), role: "status"}, msg);
+  document.body.append(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.remove(), 4500);
+}
+const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " KB" : (n / 1048576).toFixed(1) + " MB";
+
+// ---------------------------------------------------------------- tabs
+function showTab(name){
+  document.body.dataset.tab = name;
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name ? "true" : "false"));
+  $("view-ask").hidden = name === "search";
+  $("view-search").hidden = name !== "search";
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+// ----------------------------------------------------------- documents
+async function loadDocs(){
+  docs = await api("/api/documents");
+  const list = $("docs");
+  $("doc-count").textContent = docs.length ? "(" + docs.length + ")" : "";
+  $("lib-sub").textContent = docs.length ? docs.length + " document" + (docs.length === 1 ? "" : "s") + " indexed" : "Your knowledge base is empty";
+  if (!docs.length){
+    list.replaceChildren(el("li", {class: "empty"}, "No documents yet.", el("br"), el("button", {class: "btn small", style: "margin-top:10px", onclick: loadSamples}, "Load 2 sample documents")));
+  } else {
+    list.replaceChildren(...docs.map(docItem));
+  }
+  renderWelcome();
+}
+function docItem(d){
+  const li = el("li", {class: "doc"});
+  const body = el("div");
+  const head = el("div", {class: "doc-head"},
+    el("button", {class: "doc-name", title: "Show a preview", onclick: async () => {
+      if (body.childNodes.length){ body.replaceChildren(); return; }
+      try {
+        const full = await api("/api/documents/" + d.id);
+        body.replaceChildren(el("div", {class: "preview"}, full.preview.map(c => el("p", {}, (c.page ? "p." + c.page + " · " : "") + c.text.slice(0, 280) + (c.text.length > 280 ? "…" : "")))));
+      } catch (e) { toast(e.message, true); }
+    }}, d.name),
+    el("button", {class: "btn small", "aria-label": "Delete " + d.name, onclick: async (e) => {
+      const b = e.currentTarget;
+      if (b.dataset.armed !== "1"){ b.dataset.armed = "1"; b.textContent = "Sure?"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Delete"; }, 3000); return; }
+      try { await api("/api/documents/" + d.id, {method: "DELETE"}); await loadDocs(); } catch (err) { toast(err.message, true); }
+    }}, "Delete"));
+  li.append(head, el("div", {class: "doc-meta"},
+    el("span", {class: "tag"}, d.kind.toUpperCase()), el("span", {class: "tag"}, d.chunk_count + " passages"), el("span", {class: "tag"}, fmtSize(d.size_bytes)),
+    el("span", {class: "tag " + (d.semantic ? "ok" : "warn"), title: d.semantic ? "Searchable by meaning" : "Keyword search only"}, d.semantic ? "semantic" : "keyword")), body);
+  return li;
+}
+async function loadSamples(){
+  try { const r = await api("/api/documents/samples", {method: "POST"}); toast(r.created + " sample document(s) added"); await loadDocs(); }
+  catch (e) { toast(e.message, true); }
+}
+async function uploadFiles(files){
+  for (const f of files){
+    const note = el("div", {class: "toast"}, el("span", {class: "spinner"}), "Indexing " + f.name + "…");
+    document.querySelectorAll(".toast").forEach(t => t.remove()); document.body.append(note);
+    try {
+      await api("/api/documents?filename=" + encodeURIComponent(f.name), {method: "POST", raw: f});
+      note.remove(); toast("Added " + f.name);
+    } catch (e) { note.remove(); toast(f.name + ": " + e.message, true); }
+    await loadDocs();
+  }
+}
+const drop = $("drop");
+drop.addEventListener("click", () => $("file").click());
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("file").click(); } });
+$("file").addEventListener("change", e => { uploadFiles([...e.target.files]); e.target.value = ""; });
+["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => uploadFiles([...e.dataTransfer.files]));
+$("paste-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  try {
+    await api("/api/documents/text", {method: "POST", body: {title: $("paste-title").value || "Pasted text", text: $("paste-text").value}});
+    $("paste-title").value = ""; $("paste-text").value = ""; toast("Text added"); await loadDocs();
+  } catch (err) { toast(err.message, true); }
+});
+
+// -------------------------------------------------------------- render
+function inline(text, cites){
+  const out = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\[\d+\])/g;
+  let last = 0, m;
+  while ((m = re.exec(text))){
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const t = m[0];
+    if (t.startsWith("**")) out.push(el("strong", {}, t.slice(2, -2)));
+    else if (t.startsWith("`")) out.push(el("code", {}, t.slice(1, -1)));
+    else { const n = Number(t.slice(1, -1)); out.push(cites && cites[n] ? el("button", {class: "cite", type: "button", "aria-label": "Source " + n, onclick: cites[n]}, n) : t); }
+    last = m.index + t.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function markdown(text, cites){
+  const blocks = [];
+  let list = null;
+  for (const raw of text.split("\n")){
+    const line = raw.trimEnd();
+    const bullet = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (bullet){ if (!list){ list = el("ul"); blocks.push(list); } list.append(el("li", {}, inline(bullet[1], cites))); continue; }
+    list = null;
+    if (line.trim()) blocks.push(el("p", {}, inline(line.trim(), cites)));
+  }
+  return blocks;
+}
+function highlight(text, query){
+  const terms = [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) || [])].slice(0, 8);
+  if (!terms.length) return [text];
+  const re = new RegExp("(" + terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  return text.split(re).map((part, i) => i % 2 ? el("mark", {}, part) : part);
+}
+
+// ---------------------------------------------------------------- chat
+function renderWelcome(){
+  const box = $("messages");
+  if (history.length) return;
+  const sample = docs.some(d => d.name.includes("(sample)"));
+  const ideas = sample ? ["How many sick days do I get?", "What is the home office stipend?", "Can I work from a cafe on public Wi-Fi?", "How long is parental leave for non-birth parents?"] : [];
+  box.replaceChildren(el("div", {class: "welcome"},
+    el("h2", {}, docs.length ? "Ask anything about your documents" : "Add a document to get started"),
+    el("p", {}, docs.length ? "Questions are answered from your files, with citations you can open." : "Upload a PDF, Word file or text on the left, or load the sample documents to try it."),
+    ideas.length ? el("div", {class: "suggest", style: "justify-content:center;margin-top:12px"}, ideas.map(q => el("button", {class: "chip", type: "button", onclick: () => { $("question").value = q; ask(); }}, q))) : null,
+    !docs.length ? el("p", {}, el("button", {class: "btn primary", onclick: loadSamples}, "Load sample documents")) : null));
+}
+function botMessage(res){
+  const open = {};
+  const srcBodies = {};
+  const holder = el("div");
+  const toggle = n => {
+    const chip = row.querySelector('[data-n="' + n + '"]');
+    const isOpen = !!srcBodies[n];
+    if (isOpen){ srcBodies[n].remove(); delete srcBodies[n]; chip.setAttribute("aria-expanded", "false"); return; }
+    const s = res.sources[n - 1];
+    const b = el("div", {class: "src-body"}, el("b", {}, "[" + n + "] " + s.doc_name + (s.page ? " · page " + s.page : "")), s.text);
+    srcBodies[n] = b; holder.append(b); chip.setAttribute("aria-expanded", "true");
+  };
+  const cites = {};
+  res.sources.forEach((_, i) => cites[i + 1] = () => toggle(i + 1));
+  const row = el("div", {class: "src-row"},
+    res.sources.length ? el("span", {}, "Sources:") : null,
+    res.sources.map((s, i) => el("button", {class: "src-chip", type: "button", "data-n": i + 1, "aria-expanded": "false", onclick: () => toggle(i + 1)}, "[" + (i + 1) + "] " + (s.doc_name.length > 28 ? s.doc_name.slice(0, 26) + "…" : s.doc_name) + (s.page ? " p." + s.page : ""))));
+  const label = res.mode === "ai" ? null : el("div", {class: "src-row"}, el("span", {class: "tag warn"}, res.mode === "extractive" ? "Passages only (AI off)" : "No match"));
+  return el("div", {class: "msg bot"}, el("div", {class: "bubble"}, markdown(res.answer, cites)), label, row, holder);
+}
+async function ask(){
+  if (busy) return;
+  const q = $("question").value.trim();
+  if (q.length < 2) return;
+  if (!docs.length){ toast("Add a document first.", true); return; }
+  busy = true; $("ask-btn").disabled = true;
+  const box = $("messages");
+  if (!history.length) box.replaceChildren();
+  box.append(el("div", {class: "msg user"}, q));
+  const typing = el("div", {class: "msg bot"}, el("div", {class: "bubble"}, el("span", {class: "typing"}, el("i"), el("i"), el("i"))));
+  box.append(typing); typing.scrollIntoView({block: "end", behavior: "smooth"});
+  $("question").value = ""; $("question").style.height = "";
+  try {
+    const res = await api("/api/chat", {method: "POST", body: {question: q, history: history.slice(-8)}});
+    typing.replaceWith(botMessage(res));
+    history.push({role: "user", content: q}, {role: "assistant", content: res.answer});
+    $("clear").hidden = false;
+  } catch (e) { typing.remove(); box.append(el("div", {class: "msg bot"}, el("div", {class: "bubble", style: "color:var(--err)"}, e.message))); }
+  finally { busy = false; $("ask-btn").disabled = false; box.lastElementChild.scrollIntoView({block: "nearest", behavior: "smooth"}); $("question").focus(); }
+}
+$("ask-form").addEventListener("submit", e => { e.preventDefault(); ask(); });
+$("question").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); ask(); } });
+$("question").addEventListener("input", e => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px"; });
+$("clear").addEventListener("click", () => { history = []; $("clear").hidden = true; renderWelcome(); });
+
+// -------------------------------------------------------------- search
+$("search-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("query").value.trim();
+  if (q.length < 2) return;
+  const out = $("results");
+  out.replaceChildren(el("p", {class: "empty"}, el("span", {class: "spinner"}), "Searching…"));
+  try {
+    const r = await api("/api/search", {method: "POST", body: {query: q, k: 8}});
+    $("search-sub").textContent = r.mode === "hybrid" ? "Semantic + keyword search" : "Keyword search";
+    out.replaceChildren(...(r.results.length ? r.results.map(x => el("article", {class: "result"},
+      el("header", {}, el("strong", {}, x.doc_name), x.page ? el("span", {class: "tag"}, "page " + x.page) : null,
+        el("span", {class: "score"}, "relevance", el("i", {}, el("b", {style: "width:" + Math.round(x.score * 100) + "%"})))),
+      el("p", {}, highlight(x.text.length > 700 ? x.text.slice(0, 700) + "…" : x.text, q)))) : [el("p", {class: "empty"}, "No matching passages.")]));
+  } catch (err) { out.replaceChildren(el("p", {class: "empty", style: "color:var(--err)"}, err.message)); }
+});
+
+// ---------------------------------------------------------------- init
+(async function(){
+  try {
+    const h = await api("/api/health");
+    const pill = $("ai-pill");
+    pill.textContent = h.ai_configured ? "AI answers on" : "Keyword mode";
+    pill.title = h.ai_configured ? "Gemini is connected" : "Set GEMINI_API_KEY to enable AI answers and semantic search";
+    pill.classList.toggle("on", h.ai_configured);
+  } catch {}
+  try { await loadDocs(); } catch (e) { toast(e.message, true); }
+})();
+</script>
+</body>
+</html>

@@ -1,95 +1,130 @@
-# 🧠 AI Knowledge Base
+# AI Knowledge Base
 
-[![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-orange.svg)](https://www.trychroma.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Upload your documents, then ask questions in plain English and get answers with citations pointing at the exact passages they came from.
 
-A professional AI-driven platform for intelligent document analysis, built with a modern **Retrieval-Augmented Generation (RAG)** architecture. It empowers users to upload documents, perform semantic search, and chat contextually with their knowledge base.
+![Ask tab](docs/screenshots/ask.png)
 
----
+## Features
 
-## ✨ Features
+- **Upload PDF, DOCX, TXT, Markdown, CSV, JSON and more**, by drag-and-drop, or paste text directly.
+- **Cited answers.** Every claim carries a `[n]` marker. Click it to see the source passage and its page.
+- **Hybrid search.** BM25 keyword ranking and semantic (embedding) similarity are merged with reciprocal rank fusion.
+- **Works without an API key.** With no key the app falls back to keyword search and shows the best-matching sentences from your documents. Add a Gemini key and you get written answers plus semantic search.
+- **Prompt-injection aware.** Document text is passed to the model as untrusted data, and the model is told never to follow instructions found in it.
+- **Mobile-friendly UI** with light and dark themes. No build step and no front-end dependencies.
+- **Sample documents** you can load with one click to try it out.
 
-* **Intelligent RAG Engine:** Powered by LangChain and OpenAI for accurate, context-aware document QA.
-* **FastAPI Backend:** Robust, asynchronous API designed for high-throughput document processing and embedding.
-* **Modern Next.js Frontend:** Responsive, clean UI built with Next.js 15, TypeScript, and Tailwind CSS.
-* **Vector Storage:** Utilizes ChromaDB for efficient local vector indexing and lightning-fast similarity retrieval.
+## Screenshots
 
----
+| Library | Search | Mobile |
+|---|---|---|
+| ![Library](docs/screenshots/library.png) | ![Search](docs/screenshots/search.png) | ![Mobile](docs/screenshots/mobile.png) |
 
-## 🛠️ Tech Stack
+The screenshots were taken without an API key, so they show keyword mode.
 
-### Backend
-* **Language & Runtime:** Python 3.13
-* **API Framework:** FastAPI & Uvicorn
-* **Orchestration & AI:** LangChain, OpenAI API
-* **Vector Database:** ChromaDB
+## How it works
 
-### Frontend
-* **Framework:** Next.js 15 (React)
-* **Language:** TypeScript
-* **Styling:** Tailwind CSS
-* **HTTP Client:** Axios
+```mermaid
+flowchart LR
+    U[Upload] --> E[Extract text<br/>PDF / DOCX / text]
+    E --> C[Chunk<br/>~800 chars, 150 overlap]
+    C --> D[(SQLite)]
+    C -. optional .-> G1[Gemini embeddings]
+    G1 --> D
+    Q[Question] --> S[BM25 + vector search<br/>reciprocal rank fusion]
+    D --> S
+    S --> A{API key?}
+    A -- yes --> G2[Gemini writes a cited answer]
+    A -- no --> X[Extractive answer<br/>best matching sentences]
+```
 
----
+## Quick start
 
-## 🚀 Quick Start
-
-### 1. Clone the Repository
+Requires Python 3.12+.
 
 ```bash
-git clone GitHub repo
+git clone https://github.com/Valentina14142000/ai-knowledge-base.git
 cd ai-knowledge-base
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload
 ```
 
-### 2. Set up the Backend
+Open http://localhost:8000. Click **Load sample documents** to try it straight away.
 
-Navigate to the backend directory, set up your Python virtual environment, and install dependencies:
+To turn on AI answers and semantic search, put a free [Gemini API key](https://aistudio.google.com/apikey) in `.env` as `GEMINI_API_KEY`.
 
-```Bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install fastapi uvicorn langchain langchain-openai chromadb python-dotenv
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | *(unset)* | Enables AI answers and semantic search. `GOOGLE_API_KEY` also works. |
+| `GEMINI_MODEL` | `gemini-flash-latest` | Preferred generation model. Fallbacks are tried automatically. |
+| `DATABASE_PATH` | `knowledge.db` | SQLite file location. On Vercel or Lambda it defaults to `/tmp`. |
+
+## API
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | Status and whether AI is enabled |
+| GET | `/api/stats` | Document and chunk counts |
+| GET | `/api/documents` | List documents |
+| POST | `/api/documents?filename=name.pdf` | Upload a file (raw request body, max 10 MB) |
+| POST | `/api/documents/text` | Add pasted text: `{"name": "...", "text": "..."}` |
+| POST | `/api/documents/samples` | Load the sample documents |
+| GET / DELETE | `/api/documents/{id}` | Fetch or delete one document |
+| POST | `/api/search` | `{"query": "...", "limit": 8}` returns ranked passages |
+| POST | `/api/chat` | `{"question": "...", "history": [...]}` returns an answer with sources |
+
+Interactive docs are served at `/docs`.
+
+## Deploying
+
+### Render (recommended)
+
+1. Push this repo to GitHub.
+2. In Render choose **New, then Blueprint**, and select the repo. `render.yaml` configures everything.
+3. Optionally set `GEMINI_API_KEY` in the service's environment settings.
+
+Or create a Web Service by hand with build command `pip install -r requirements.txt`, start command `uvicorn app.main:app --host 0.0.0.0 --port $PORT` and health check path `/health`.
+
+### Docker
+
+```bash
+docker build -t ai-knowledge-base .
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-key ai-knowledge-base
 ```
 
-Create a .env file in the backend directory and add your OpenAI API key:
+### Things to know
 
-```Code snippet
-OPENAI_API_KEY=your_openai_api_key_here
+- **Storage is ephemeral on free hosting.** Render's free tier and Vercel reset the disk on restart or redeploy, so uploaded documents disappear. Attach a persistent disk and point `DATABASE_PATH` at it if you need them to stay.
+- **There is no login.** Anyone with the URL can upload, read and delete documents. Do not upload confidential files to a public deployment.
+- **Limits:** 10 MB per file, 600,000 characters per document, 60 documents, 6,000 chunks in total. Search and chat are rate-limited per IP.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q
 ```
 
-Start the FastAPI server:
+CI runs the suite on every push (`.github/workflows/ci.yml`).
 
-```Bash
-uvicorn main:app --reload --port 8000
+## Project layout
+
+```
+app/
+  main.py            FastAPI app, security headers, static UI
+  config.py          Settings and limits
+  db.py              SQLite schema
+  api/routes.py      HTTP endpoints
+  services/          extract, chunker, gemini, index, repository, answer, ratelimit
+  static/index.html  Single-file UI
+tests/               Unit and API tests
 ```
 
-### 3. Set up the Frontend
+## License
 
-Open a new terminal window, navigate to the frontend directory, and install dependencies:
-
-```Bash
-cd frontend
-npm install
-# or
-yarn install
-```
-
-Create a .env.local file in the frontend directory if needed to configure your API endpoint:
-
-```Code snippet
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-Start the Next.js development server:
-
-```Bash
-npm run dev
-# or
-yarn dev
-```
-
-Open http://localhost:3000 in your browser to interact with your AI Knowledge Base dashboard.
+MIT

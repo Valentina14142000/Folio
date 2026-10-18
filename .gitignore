@@ -1,11 +1,13 @@
-# Backend
-backend/venv/
-backend/__pycache__/
-backend/chroma_db/
+venv/
+.venv/
 .env
-
-# Frontend
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.db-journal
+.DS_Store
+# legacy Next.js app folder (replaced by app/static)
+/frontend/
